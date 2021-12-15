@@ -89,7 +89,7 @@ color_dic = {
 }
 
 
-def simulation(num_of_vehicles):
+def simulation(num_of_vehicles, with_program):
     init(True)
     for i in range(1, num_of_vehicles):
         traci.route.add(
@@ -109,38 +109,53 @@ def simulation(num_of_vehicles):
             traci.vehicle.setMaxSpeed(f"{k}_{i}", SPEED)
             traci.vehicle.setColor(f"{k}_{i}", color_dic[k])
     while traci.simulation.getMinExpectedNumber() > 0:
-        locked_vehicles = {}
-        leaders = []
-        gridlock = []
-        control_arr = []
-        current_time = traci.simulation.getTime()
-        all_vehicles = traci.vehicle.getIDList()
+        if with_program:
+            locked_vehicles = {}
+            leaders = []
+            gridlock = []
+            control_arr = []
+            current_time = traci.simulation.getTime()
+            all_vehicles = traci.vehicle.getIDList()
 
-        for vehicle in all_vehicles:
-            leader = (traci.vehicle.getLeader(vehicle))
-            vehicle_lane = traci.vehicle.getLaneID(vehicle)
-            try:
-                if vehicle_lane[0] != ":":
-                    if leader == None:
-                        leaders.append(vehicle)
-                    else:
-                        leader_lane = traci.vehicle.getLaneID(leader[0])
-                        if vehicle_lane != leader_lane:
+            for vehicle in all_vehicles:
+                leader = (traci.vehicle.getLeader(vehicle))
+                vehicle_lane = traci.vehicle.getLaneID(vehicle)
+                try:
+                    if vehicle_lane[0] != ":":
+                        if leader == None:
                             leaders.append(vehicle)
-            except:
-                pass
-        for leader in leaders:
-            leader_lanes = traci.vehicle.getBestLanes(leader)[0][5]
-            control_arr.append(leader)
+                        else:
+                            leader_lane = traci.vehicle.getLaneID(leader[0])
+                            if vehicle_lane != leader_lane:
+                                leaders.append(vehicle)
+                except:
+                    pass
+            for leader in leaders:
+                leader_lanes = traci.vehicle.getBestLanes(leader)[0][5]
+                control_arr.append(leader)
 
-            if len(leader_lanes) > 1:
-                locked_veh = detect_gridlock(leader, leader_lanes[1])
-                if locked_veh:
-                    locked_vehicles[locked_veh[0]] = locked_veh[1]
+                if len(leader_lanes) > 1:
+                    locked_veh = detect_gridlock(leader, leader_lanes[1])
+                    if locked_veh:
+                        locked_vehicles[locked_veh[0]] = locked_veh[1]
 
-        for init_veh in (locked_vehicles):
-            if len(gridlock) > 0:
-                if init_veh not in gridlock[0]:
+            for init_veh in (locked_vehicles):
+                if len(gridlock) > 0:
+                    if init_veh not in gridlock[0]:
+                        temp = []
+                        index = init_veh
+                        for k in range(15):
+                            try:
+                                next_vehicle = locked_vehicles[index]
+                                temp.append(next_vehicle)
+                                index = next_vehicle
+                                if next_vehicle == init_veh:
+                                    gridlock.append(temp)
+                                    break
+
+                            except:
+                                break
+                elif len(gridlock) == 0:
                     temp = []
                     index = init_veh
                     for k in range(15):
@@ -154,26 +169,12 @@ def simulation(num_of_vehicles):
 
                         except:
                             break
-            elif len(gridlock) == 0:
-                temp = []
-                index = init_veh
-                for k in range(15):
-                    try:
-                        next_vehicle = locked_vehicles[index]
-                        temp.append(next_vehicle)
-                        index = next_vehicle
-                        if next_vehicle == init_veh:
-                            gridlock.append(temp)
-                            break
 
-                    except:
-                        break
-
-        for v in control_arr:
-            control_vehicle(v, net)
-        for vehicles in gridlock:
-            for v in vehicles:
-                traci.vehicle.setSpeed(v, SPEED)
+            for v in control_arr:
+                control_vehicle(v, net)
+            for vehicles in gridlock:
+                for v in vehicles:
+                    traci.vehicle.setSpeed(v, SPEED)
         traci.simulationStep()
         if traci.simulation.getTime() == 5000:
             traci.close()
@@ -181,4 +182,5 @@ def simulation(num_of_vehicles):
 
 
 num_of_vehicles = int(input("Num of vehicles :"))
-simulation(num_of_vehicles)
+with_program = int(input("With control program (0=false, 1=true):"))
+simulation(num_of_vehicles, bool(with_program))

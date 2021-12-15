@@ -161,35 +161,50 @@ PRIORITY = {}
 PRIORITY_ARR = []
 
 
-def simulation(num, is_gui):
+def simulation(num, with_program):
     for node in net.getNodes():
         NODES.append(node.getID())
         PRIORITY[node.getID()] = "PRIORITY"
-    init(is_gui)
+    init(True)
     teleportNum = 0
     departedNum = 0
     arrivedNum = 0
     for i in range(num):
         make_vehicle(f"vehicle_{i}", make_random_route(i), 0)
     while traci.simulation.getMinExpectedNumber() > 0:
-        locked_vehicle = {}
-        collisions_arr = traci.simulation.getCollisions()
-        if collisions_arr:
-            print(traci.simulation.getCollisions())
-        for index, node in enumerate(NODES):
-            solve_deadlock(node, index, locked_vehicle)
-        del_arr = []
-        for vehicle_key in locked_vehicle.keys():
-            if vehicle_key not in locked_vehicle.values():
-                del_arr.append(vehicle_key)
-        for key in del_arr:
-            del locked_vehicle[key]
+        if with_program:
+            locked_vehicle = {}
+            collisions_arr = traci.simulation.getCollisions()
+            if collisions_arr:
+                print(traci.simulation.getCollisions())
+            for index, node in enumerate(NODES):
+                solve_deadlock(node, index, locked_vehicle)
+            del_arr = []
+            for vehicle_key in locked_vehicle.keys():
+                if vehicle_key not in locked_vehicle.values():
+                    del_arr.append(vehicle_key)
+            for key in del_arr:
+                del locked_vehicle[key]
 
-        #GRIDLOCK
-        gridlock = []
-        for init_veh in (locked_vehicle):
-            if len(gridlock) > 0:
-                if init_veh not in gridlock[0]:
+            #GRIDLOCK
+            gridlock = []
+            for init_veh in (locked_vehicle):
+                if len(gridlock) > 0:
+                    if init_veh not in gridlock[0]:
+                        temp = []
+                        index = init_veh
+                        for k in range(6):
+                            try:
+                                next_vehicle = locked_vehicle[index]
+                                temp.append(next_vehicle)
+                                index = next_vehicle
+                                if next_vehicle == init_veh:
+                                    gridlock.append(temp)
+                                    break
+
+                            except:
+                                break
+                elif len(gridlock) == 0:
                     temp = []
                     index = init_veh
                     for k in range(6):
@@ -203,24 +218,10 @@ def simulation(num, is_gui):
 
                         except:
                             break
-            elif len(gridlock) == 0:
-                temp = []
-                index = init_veh
-                for k in range(6):
-                    try:
-                        next_vehicle = locked_vehicle[index]
-                        temp.append(next_vehicle)
-                        index = next_vehicle
-                        if next_vehicle == init_veh:
-                            gridlock.append(temp)
-                            break
 
-                    except:
-                        break
-
-        for vehicles in gridlock:
-            for v in vehicles:
-                traci.vehicle.setSpeed(v, SPEED)
+            for vehicles in gridlock:
+                for v in vehicles:
+                    traci.vehicle.setSpeed(v, SPEED)
         traci.simulationStep()
         if traci.simulation.getTime() == 3600:
             traci.close()
@@ -228,5 +229,5 @@ def simulation(num, is_gui):
 
 
 num_of_vehicles = int(input("Num of vehicles :"))
-
-simulation(num_of_vehicles, True)
+with_program = int(input("With control program (0=false, 1=true):"))
+simulation(num_of_vehicles, with_program)

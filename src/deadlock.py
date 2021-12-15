@@ -108,15 +108,18 @@ net = sumolib.net.readNet('data/deadlock.net.xml')
 PRIORITY = {"gneJ12": "PRIORITY"}
 
 
-def simulation(num, is_gui):
+def simulation(num, is_gui, with_program):
 
     init(is_gui)
     make_deadlock_vehicle(num)
     while traci.simulation.getMinExpectedNumber() > 0:
-        solve_deadlock("gneJ12", 0, {})
+        if with_program:
+            solve_deadlock("gneJ12", 0, {})
         traci.simulationStep()
     traci.close()
 
 
 num_of_vehicles = int(input("Num of vehicles :"))
-simulation(num_of_vehicles, True)
+with_program = int(input("With control program (0=false, 1=true):"))
+
+simulation(num_of_vehicles, True, bool(with_program))
